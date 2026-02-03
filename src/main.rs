@@ -1,10 +1,4 @@
-use std::{
-    fmt::{Display, format},
-    fs::File,
-    io::BufWriter,
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{fmt::Display, fs::File, io::BufWriter, path::PathBuf, sync::Arc};
 
 use anyhow::{Context, Result};
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
