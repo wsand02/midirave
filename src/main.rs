@@ -1,4 +1,10 @@
-use std::{fmt::Display, fs::File, io::BufWriter, path::PathBuf, sync::Arc};
+use std::{
+    fmt::Display,
+    fs::File,
+    io::{self, BufWriter, Write},
+    path::PathBuf,
+    sync::Arc,
+};
 
 use anyhow::{Context, Result};
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
@@ -8,7 +14,7 @@ use rustysynth::{
     SynthesizerSettings,
 };
 
-fn wav_encode(left: &Vec<f32>, right: &Vec<f32>, output: PathBuf) -> Result<PathBuf> {
+fn wav_encode(left: &Vec<f32>, right: &Vec<f32>, output: PathBuf) -> Result<()> {
     let spec = WavSpec {
         channels: 2,
         sample_rate: 44100,
@@ -20,16 +26,27 @@ fn wav_encode(left: &Vec<f32>, right: &Vec<f32>, output: PathBuf) -> Result<Path
     let mut writer = WavWriter::new(&mut buffer, spec).context("Failed to create WAV writer")?;
 
     for (l, r) in left.iter().zip(right.iter()) {
-        writer
-            .write_sample((*l * i16::MAX as f32) as i16)
-            .context("Failed to write left sample")?;
-        writer
-            .write_sample((*r * i16::MAX as f32) as i16)
-            .context("Failed to write left sample")?;
+        writer.write_sample((*l * i16::MAX as f32) as i16)?;
+        writer.write_sample((*r * i16::MAX as f32) as i16)?;
     }
 
     writer.finalize().context("Failed to finalize WAV file")?;
-    Ok(output)
+    Ok(())
+}
+
+fn pcm_encode(left: &[f32], right: &[f32]) -> Result<()> {
+    let stdout = io::stdout();
+    let mut out = BufWriter::new(stdout.lock());
+
+    for (l, r) in left.iter().zip(right.iter()) {
+        let l = (l * i16::MAX as f32) as i16;
+        let r = (r * i16::MAX as f32) as i16;
+
+        out.write_all(&l.to_le_bytes())?;
+        out.write_all(&r.to_le_bytes())?;
+    }
+
+    Ok(())
 }
 
 fn sequence(
@@ -111,12 +128,12 @@ fn synthesize(
     midi_path: &PathBuf,
     preset: &Option<i32>,
     bank: &Option<i32>,
-    output_path: &PathBuf,
 ) -> Result<()> {
     let sf = sf2_read(sf2_path)?;
     let midiff = midi_read(midi_path)?;
     let (left, right) = sequence(&Arc::new(midiff), &Arc::new(sf), preset, bank)?;
-    wav_encode(&left, &right, output_path.clone())?;
+    // wav_encode(&left, &right, output_path.clone())?;
+    pcm_encode(&left, &right)?;
     Ok(())
 }
 
@@ -171,7 +188,7 @@ enum Commands {
 
         /// Output path
         #[arg(short, long, value_name = "FILE")]
-        output: PathBuf,
+        output: Option<PathBuf>,
     },
 }
 
@@ -186,7 +203,7 @@ fn main() -> Result<()> {
             format: _,
             preset,
             bank,
-            output,
-        } => synthesize(sf2, midi, preset, bank, output),
+            output: _,
+        } => synthesize(sf2, midi, preset, bank),
     }
 }
