@@ -1,22 +1,48 @@
 use std::{
     fmt::{Display, format},
     fs::File,
+    io::BufWriter,
     path::PathBuf,
     sync::Arc,
 };
 
 use anyhow::{Context, Result};
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+use hound::{SampleFormat, WavSpec, WavWriter};
 use rustysynth::{
     MidiFile, MidiFileSequencer, Preset, SoundFont, Synthesizer, SynthesizerError,
     SynthesizerSettings,
 };
 
+fn wav_encode(left: &Vec<f32>, right: &Vec<f32>, output: PathBuf) -> Result<PathBuf> {
+    let spec = WavSpec {
+        channels: 2,
+        sample_rate: 44100,
+        bits_per_sample: 16,
+        sample_format: SampleFormat::Int,
+    };
+    let file: File = File::create(&output).context("Failed to create output file")?;
+    let mut buffer = BufWriter::new(file);
+    let mut writer = WavWriter::new(&mut buffer, spec).context("Failed to create WAV writer")?;
+
+    for (l, r) in left.iter().zip(right.iter()) {
+        writer
+            .write_sample((*l * i16::MAX as f32) as i16)
+            .context("Failed to write left sample")?;
+        writer
+            .write_sample((*r * i16::MAX as f32) as i16)
+            .context("Failed to write left sample")?;
+    }
+
+    writer.finalize().context("Failed to finalize WAV file")?;
+    Ok(output)
+}
+
 fn sequence(
     midi: &Arc<MidiFile>,
     soundfont: &Arc<SoundFont>,
-    preset: Option<i32>,
-    bank: Option<i32>,
+    preset: &Option<i32>,
+    bank: &Option<i32>,
 ) -> Result<(Vec<f32>, Vec<f32>), SynthesizerError> {
     let mut settings = SynthesizerSettings::new(44100);
     if preset.is_some() && bank.is_some() {
@@ -58,13 +84,13 @@ impl Display for Instrument {
 }
 
 fn sf2_read(sf2_path: &PathBuf) -> Result<SoundFont> {
-    let mut idk = File::open(sf2_path).with_context(|| format!("Failed to open Soundfont"))?;
-    SoundFont::new(&mut idk).with_context(|| format!("Error reading soundfont"))
+    let mut idk = File::open(sf2_path).context("Failed to open Soundfont")?;
+    SoundFont::new(&mut idk).context("Error reading Soundfont")
 }
 
 fn instruments(sf2_path: &PathBuf) -> Result<()> {
-    let sf_result = sf2_read(sf2_path)?;
-    let presets = sf_result.get_presets();
+    let sf = sf2_read(sf2_path)?;
+    let presets = sf.get_presets();
     let mut instruments: Vec<Instrument> = Vec::new();
     for inst in presets.iter().enumerate() {
         let (_, pre): (usize, &Preset) = inst;
@@ -80,7 +106,25 @@ fn instruments(sf2_path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn synthesize() {}
+fn midi_read(midi: &PathBuf) -> Result<MidiFile> {
+    let mut midi_file = File::open(midi).context("Failed to open MIDI file")?;
+
+    MidiFile::new(&mut midi_file).context("Error reading MIDI file")
+}
+
+fn synthesize(
+    sf2_path: &PathBuf,
+    midi_path: &PathBuf,
+    preset: &Option<i32>,
+    bank: &Option<i32>,
+    output_path: &PathBuf,
+) -> Result<()> {
+    let sf = sf2_read(sf2_path)?;
+    let midiff = midi_read(midi_path)?;
+    let (left, right) = sequence(&Arc::new(midiff), &Arc::new(sf), preset, bank)?;
+    wav_encode(&left, &right, output_path.clone())?;
+    Ok(())
+}
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -113,11 +157,11 @@ enum Commands {
     Synthesize {
         /// Path to SoundFont file
         #[arg(short, long, value_name = "FILE")]
-        sf2: Option<PathBuf>,
+        sf2: PathBuf,
 
         /// Path to MIDI file
         #[arg(short, long, value_name = "FILE")]
-        midi: Option<PathBuf>,
+        midi: PathBuf,
 
         /// Output format
         #[arg(short, long, default_value = "wav")]
@@ -133,7 +177,7 @@ enum Commands {
 
         /// Output path
         #[arg(short, long, value_name = "FILE")]
-        output: Option<PathBuf>,
+        output: PathBuf,
     },
 }
 
@@ -142,6 +186,13 @@ fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Instruments { sf2 } => instruments(sf2),
-        Commands::Synthesize { .. } => todo!(),
+        Commands::Synthesize {
+            sf2,
+            midi,
+            format: _,
+            preset,
+            bank,
+            output,
+        } => synthesize(sf2, midi, preset, bank, output),
     }
 }
