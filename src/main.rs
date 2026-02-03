@@ -1,4 +1,10 @@
-use std::{fmt::Display, fs::File, io::BufWriter, path::PathBuf, sync::Arc};
+use std::{
+    fmt::Display,
+    fs::File,
+    io::BufWriter,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use anyhow::{Context, Result};
 use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
@@ -8,14 +14,14 @@ use rustysynth::{
     SynthesizerSettings,
 };
 
-fn wav_encode(left: &Vec<f32>, right: &Vec<f32>, output: PathBuf) -> Result<PathBuf> {
+fn wav_encode(left: &[f32], right: &[f32], output: &std::path::Path) -> Result<PathBuf> {
     let spec = WavSpec {
         channels: 2,
         sample_rate: 44100,
         bits_per_sample: 16,
         sample_format: SampleFormat::Int,
     };
-    let file: File = File::create(&output).context("Failed to create output file")?;
+    let file: File = File::create(output).context("Failed to create output file")?;
     let mut buffer = BufWriter::new(file);
     let mut writer = WavWriter::new(&mut buffer, spec).context("Failed to create WAV writer")?;
 
@@ -29,7 +35,7 @@ fn wav_encode(left: &Vec<f32>, right: &Vec<f32>, output: PathBuf) -> Result<Path
     }
 
     writer.finalize().context("Failed to finalize WAV file")?;
-    Ok(output)
+    Ok(output.to_path_buf())
 }
 
 fn sequence(
@@ -111,12 +117,12 @@ fn synthesize(
     midi_path: &PathBuf,
     preset: &Option<i32>,
     bank: &Option<i32>,
-    output_path: &PathBuf,
+    output_path: &Path,
 ) -> Result<()> {
     let sf = sf2_read(sf2_path)?;
     let midiff = midi_read(midi_path)?;
     let (left, right) = sequence(&Arc::new(midiff), &Arc::new(sf), preset, bank)?;
-    wav_encode(&left, &right, output_path.clone())?;
+    wav_encode(&left, &right, output_path)?;
     Ok(())
 }
 
