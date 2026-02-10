@@ -98,6 +98,10 @@ nami3 -i out.wav -o out.mp3
 - When invalid or out-of-range `preset`/`bank` values are supplied, the synthesizer typically ignores them silently (this behavior is delegated to the underlying library).
 - Running the `instruments` command enumerates the SF2's presets and prints each one in a human-readable format.
 
+## Limitations
+
+- Overrides files without asking.
+
 ## License
 
 Midirave is available under the MIT license. See [LICENSE](LICENSE).
