@@ -2,6 +2,10 @@
 name = "midirave"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "A MIDI synthesizer cli tool"
+homepage = "https://github.com/wsand02/midirave"
+readme = "README.md"
 
 [dependencies]
 rustysynth = { git = "https://github.com/wsand02/rustysynth.git", branch = "breakallthethings", version = "1.3.6" }
