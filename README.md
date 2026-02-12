@@ -64,7 +64,6 @@ Options:
 - `-s, --sf2 <FILE>`: SoundFont file (required)
 - `-m, --midi <FILE>`: MIDI file (required)
 - `-o, --output <FILE>`: Output audio file (required)
-- `-f, --format <wav|mp3>`: Output format (default: `wav`) — currently only WAV output is produced. See notes below.
 - `-p, --preset <INT>` and `-b, --bank <INT>`: Override the instrument used for rendering. If you supply one, you must supply both.
 
 Examples:
@@ -82,7 +81,7 @@ midirave synthesize -s FluidR3_GM.sf2 -m tune.mid -p 25 -b 0 -o tune-with-guitar
 Notes:
 - If `preset` and `bank` are both provided, the synthesizer is instructed to override instruments so all channels use that instrument.
 - The output WAV uses 2 channels (stereo), 44100 Hz sample rate, 16 bits per sample (signed integer).
-- The `--format mp3` option exists in the CLI but currently does not produce MP3 directly, if you need MP3, convert the WAV with `ffmpeg` or [nami3](https://github.com/wsand02/nami3):
+- The `--format mp3` option ~~exists in the CLI~~, has been removed, if you need MP3, convert the WAV with `ffmpeg` or [nami3](https://github.com/wsand02/nami3):
 
 ```bash
 ffmpeg -i out.wav -codec:a libmp3lame -qscale:a 2 out.mp3

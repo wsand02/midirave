@@ -1,6 +1,6 @@
 [package]
 name = "midirave"
-version = "0.1.0"
+version = "0.1.0-pasta"
 edition = "2024"
 license = "MIT"
 description = "A MIDI synthesizer cli tool"

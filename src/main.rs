@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use clap::{ArgGroup, Parser, Subcommand, ValueEnum};
+use clap::{ArgGroup, Parser, Subcommand};
 use hound::{SampleFormat, WavSpec, WavWriter};
 use rustysynth::{
     MidiFile, MidiFileSequencer, Preset, SoundFont, Synthesizer, SynthesizerError,
@@ -133,12 +133,6 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(ValueEnum, Debug, Clone)]
-enum Format {
-    Wav,
-    Mp3,
-}
-
 #[derive(Subcommand, Debug)]
 enum Commands {
     #[command(version, about = "Lists instruments from SoundFont")]
@@ -163,10 +157,6 @@ enum Commands {
         #[arg(short, long, value_name = "FILE")]
         midi: PathBuf,
 
-        /// Output format
-        #[arg(short, long, default_value = "wav")]
-        format: Option<Format>,
-
         /// Preset patch number
         #[arg(short, long)]
         preset: Option<i32>,
@@ -189,7 +179,6 @@ fn main() -> Result<()> {
         Commands::Synthesize {
             sf2,
             midi,
-            format: _,
             preset,
             bank,
             output,
